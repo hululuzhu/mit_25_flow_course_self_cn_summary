@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【中文学习笔记】个人MIT流匹配与扩散模型总结</title>
+    <link rel="stylesheet" href="src/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>流匹配与扩散模型 (Flow Matching and Diffusion Models)</h1>
+            <p class="subtitle">深度生成模型的数学原理与实践应用</p>
+            <div class="meta">
+                <span class="badge">MIT 6.S184</span>
+                <span>📚 基于最新研究论文</span>
+                <span>🎓 适合研究生水平</span>
+                <span>⏱️ 预计学习时间：8-10小时</span>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-bar">
+            <div class="progress-track">
+                <div class="progress-fill" id="progress" style="width: 20%;"></div>
+            </div>
+            <div class="progress-label">
+                <span>学习进度</span>
+                <span id="progress-text">第1章 / 共5章</span>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showChapter(1)">
+                <span class="chapter-num">第一章</span>
+                <span>导论</span>
+            </button>
+            <button class="nav-tab" onclick="showChapter(2)">
+                <span class="chapter-num">第二章</span>
+                <span>流与扩散模型</span>
+            </button>
+            <button class="nav-tab" onclick="showChapter(3)">
+                <span class="chapter-num">第三章</span>
+                <span>训练目标构建</span>
+            </button>
+            <button class="nav-tab" onclick="showChapter(4)">
+                <span class="chapter-num">第四章</span>
+                <span>模型训练</span>
+            </button>
+            <button class="nav-tab" onclick="showChapter(5)">
+                <span class="chapter-num">第五章</span>
+                <span>图像生成器</span>
+            </button>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Chapter 1: Introduction -->
+            <div class="chapter active" id="chapter1">
+                <h2>第1章：导论 - 生成式AI的数学基础</h2>
+
+                <p><strong>引言：</strong>从数据创建噪声很容易；从噪声创建数据就是生成建模 (Creating noise from data is easy; creating data from
+                    noise is generative modeling)<sup><a
+                            href="#Song_2021_ScoreSDE">Song_2021_ScoreSDE</a></sup>。这句话精辟地总结了生成模型的核心思想。</p>
+
+                <h3>1.1 概述与动机</h3>
+
+                <p>近年来，人工智能领域经历了一场革命性的变革。像 Stable Diffusion 3<sup><a
+                            href="#StabilityAI_2024_SD3Medium">StabilityAI_2024_SD3Medium</a></sup>
+                    这样的图像生成器能够生成逼真的艺术图像，Meta 的 Movie Gen Video<sup><a
+                            href="#MetaAI_2024_MovieGen">MetaAI_2024_MovieGen</a></sup> 可以创建高度真实的视频片段，而 ChatGPT
+                    等大型语言模型能够生成人类水平的文本响应。这场革命的核心在于AI系统获得了<strong>生成能力</strong> (generative capability)。</p>
+
+                <div class="concept-box">
+                    <h4>核心概念：生成式AI系统</h4>
+                    <p>与传统的预测型AI不同，生成式AI系统具有创造性：它们能够基于用户输入"梦想"或创造新的对象。本课程将深入探讨两种最重要的生成算法：</p>
+                    <ul>
+                        <li><strong>去噪扩散模型</strong> (Denoising Diffusion Models)<sup><a
+                                    href="#Ho_2020_DDPM">Ho_2020_DDPM</a></sup></li>
+                        <li><strong>流匹配</strong> (Flow Matching)<sup><a
+                                    href="#Lipman_2023_FlowMatching">Lipman_2023_FlowMatching</a></sup></li>
+                    </ul>
+                    <p>这些模型是当今最先进的图像、音频和视频生成模型的基础，甚至在科学应用中也取得了突破（如AlphaFold3<sup><a
+                                href="#Abramson_2024_AlphaFold3">Abramson_2024_AlphaFold3</a></sup>使用扩散模型预测蛋白质结构）。</p>
+                </div>
+
+                <div class="researcher-note">
+                    <h4>优点分析</h4>
+                    <ul>
+                        <li>文章开篇引入恰当，使用具体应用实例吸引读者注意力</li>
+                        <li>明确了学习目标和实际应用价值</li>
+                    </ul>
+                    <h4>改进建议</h4>
+                    <ul>
+                        <li>缺少与其他生成模型（VAE、GAN、自回归模型）的对比分析</li>
+                        <li>应该加入为什么扩散模型能够超越GAN的理论解释</li>
+                        <li>需要更多关于计算复杂度和实际部署挑战的讨论</li>
+                        <li>建议补充最优传输理论 (Optimal Transport)<sup><a
+                                    href="#Peyre_2019_ComputationalOT">Peyre_2019_ComputationalOT</a></sup> 与扩散模型的联系
+                        </li>
+                    </ul>
+                </div>
+
+                <p>此外，在大规模图像合成任务上，扩散模型在客观指标与主观评测上显著超越GAN<sup><a
+                            href="#Dhariwal_2021_BeatsGANs">Dhariwal_2021_BeatsGANs</a></sup>，巩固了其作为主流生成范式的地位。</p>
+
+                <h3>1.2 生成建模即采样 (Generative Modeling as Sampling)</h3>
+
+                <p>要理解生成模型，我们首先需要理解如何在数学上表示各种数据类型：</p>
+
+                <div class="example-box">
+                    <h4>数据的向量表示</h4>
+                    <ul>
+                        <li><strong>图像 (Image)：</strong>H×W×3 维向量（高度×宽度×RGB通道）</li>
+                        <li><strong>视频 (Video)：</strong>T×H×W×3 维向量（时间帧×高度×宽度×RGB）</li>
+                        <li><strong>分子结构 (Molecular Structure)：</strong>3×N 维向量（N个原子的3D坐标）</li>
+                    </ul>
+                    <p>关键思想：<strong>我们将生成的对象识别为向量 z ∈ ℝ<sup>d</sup></strong></p>
+                </div>
+
+                <div class="math-container">
+                    <div class="math-formula">
+                        z ~ p<sub>data</sub>
+                        <span class="math-tooltip">从数据分布p_data中采样一个样本z。这是生成建模的核心：生成等同于从未知的数据分布中采样。</span>
+                    </div>
+                </div>
+
+                <p>生成建模的核心思想是将"生成"任务转化为概率分布的采样问题。例如，当我们想生成一张狗的图像时，并不存在唯一的"最佳"狗图像，而是存在一个概率分布，描述所有可能的狗图像。</p>
+
+                <h3>1.3 从噪声到数据 (From Noise to Data)</h3>
+
+                <p>生成模型的目标是学习一个转换，将简单分布（如高斯噪声）的样本转换为复杂数据分布的样本：</p>
+
+                <div class="math-container">
+                    <div class="math-formula">
+                        p<sub>init</sub> = 𝒩(0, I<sub>d</sub>) → [生成模型] → p<sub>data</sub>
+                        <span class="math-tooltip">初始分布（标准高斯分布）通过生成模型转换为数据分布。这个转换过程通过求解微分方程实现。</span>
+                    </div>
+                </div>
+
+                <div class="concept-box">
+                    <h4>为什么选择高斯分布作为起点？</h4>
+                    <ol>
+                        <li><strong>数学便利性：</strong>高斯分布有闭式解，容易采样和计算</li>
+                        <li><strong>最大熵原理：</strong>在给定均值和方差的条件下，高斯分布具有最大熵</li>
+                        <li><strong>中心极限定理：</strong>许多独立随机变量的和趋向于高斯分布</li>
+                        <li><strong>各向同性：</strong>标准高斯分布在所有方向上对称</li>
+                    </ol>
+                </div>
+
+                <div class="quiz-section">
+                    <div class="quiz-question">
+                        思考题1：为什么说"从数据创建噪声容易，从噪声创建数据困难"？
+                    </div>
+                    <button class="btn-reveal" onclick="toggleAnswer('answer1-1')">查看答案</button>
+                    <div id="answer1-1" class="quiz-answer">
+                        <p><strong>答案：</strong></p>
+                        <p>从数据到噪声是一个<strong>熵增过程</strong>，符合热力学第二定律，自然且容易实现（只需添加随机噪声）。而从噪声到数据是一个<strong>熵减过程</strong>，需要学习数据的复杂结构和模式：
+                        </p>
+                        <ul>
+                            <li>前向过程（数据→噪声）：简单的加噪操作，不需要学习</li>
+                            <li>逆向过程（噪声→数据）：需要学习数据流形的几何结构，计算复杂</li>
+                            <li>这正是扩散模型的核心挑战：学习如何逆转扩散过程</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="quiz-section">
+                    <div class="quiz-question">
+                        思考题2：条件生成 (Conditional Generation) 与无条件生成的本质区别是什么？
+                    </div>
+                    <button class="btn-reveal" onclick="toggleAnswer('answer1-2')">查看答案</button>
+                    <div id="answer1-2" class="quiz-answer">
+                        <p><strong>答案：</strong></p>
+                        <ul>
+                            <li><strong>无条件生成：</strong>z ~ p<sub>data</sub> - 从整个数据分布中随机采样</li>
+                            <li><strong>条件生成：</strong>z ~ p<sub>data</sub>(·|y) - 根据条件y（如文本提示）从条件分布采样</li>
+                        </ul>
+                        <p>数学上，条件生成需要学习条件概率分布，这通常通过在神经网络中注入条件信息实现。例如：</p>
+                        <ul>
+                            <li>文本到图像：y是文本嵌入向量</li>
+                            <li>类别条件生成：y是one-hot编码的类别标签</li>
+                            <li>图像编辑：y是编辑指令或掩码</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="demo-section">
+                    <h4>🎮 互动演示：理解概率分布</h4>
+                    <button class="demo-button" onclick="showDemo('dist-viz')">可视化2D高斯混合分布</button>
+                    <div id="dist-viz" class="demo-output">
+                        <h4>2D高斯混合模型示例</h4>
+                        <p>考虑一个简单的2D数据分布：</p>
+                        <div class="math-container">
+                            <div class="math-formula">
+                                p(x,y) = 0.3 × 𝒩((−2,0), I) + 0.3 × 𝒩((2,0), I) + 0.4 × 𝒩((0,2), I)
+                            </div>
+                        </div>
+                        <p>这个分布有三个模式（峰值），代表数据的三个主要聚类。生成模型需要学习如何从标准高斯噪声逐步转换到这个复杂的多模态分布。</p>
+                        <div style="margin:10px 0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <label style="color:#2d3436;">
+                                样本数
+                                <input id="gmm-count" type="range" min="200" max="2000" step="100" value="600"
+                                    style="width:240px; vertical-align:middle;">
+                                <span id="gmm-count-value">600</span>
+                            </label>
+                            <button class="demo-button" id="gmm-resample" type="button">重新采样</button>
+                        </div>
+                        <canvas id="gmm-canvas" width="520" height="360"
+                            style="border:1px solid #ccc; border-radius:8px; background:white;"></canvas>
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <h4>📌 第1章要点总结</h4>
+                    <ul>
+                        <li>生成建模的本质是学习从简单分布（噪声）到复杂分布（数据）的映射</li>
+                        <li>数据被表示为高维向量 z ∈ ℝ<sup>d</sup></li>
+                        <li>生成过程等价于从数据分布 p<sub>data</sub> 中采样</li>
+                        <li>扩散模型通过模拟微分方程实现噪声到数据的转换</li>
+                        <li>条件生成通过学习条件概率分布 p<sub>data</sub>(z|y) 实现</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Chapter 2: Flow and Diffusion Models -->
+            <div class="chapter" id="chapter2">
+                <h2>第2章：流模型与扩散模型的数学框架</h2>
+
+                <p>本章介绍生成模型的核心数学机制：通过求解微分方程实现从噪声到数据的转换。我们将深入探讨常微分方程（ODE）和随机微分方程（SDE）在生成建模中的应用。</p>
+
+                <h3>2.1 流模型 (Flow Models)</h3>
+
+                <p>流模型基于常微分方程（ODE），描述确定性的轨迹演化。让我们从数学定义开始：</p>
+
+                <div class="concept-box">
+                    <h4>轨迹与向量场</h4>
+                    <p>ODE的解是一条轨迹 (trajectory)：</p>
+                    <p style="text-align: center;">X : [0, 1] → ℝ<sup>d</sup>, t ↦ X<sub>t</sub></p>
+                    <p>每个ODE由向量场 (vector field) 定义：</p>
+                    <p style="text-align: center;">u : ℝ<sup>d</sup> × [0, 1] → ℝ<sup>d</sup>, (x, t) ↦ u<sub>t</sub>(x)
+                    </p>
+                </div>
+
+                <div class="math-container">
+                    <div class="math-formula">
+                        dX<sub>t</sub>/dt = u<sub>t</sub>(X<sub>t</sub>), X<sub>0</sub> = x<sub>0</sub><sup><a
+                                href="#Chen_2018_NeuralODE">Chen_2018_NeuralODE</a></sup>
+                        <span class="math-tooltip">ODE的标准形式：轨迹的导数等于向量场在该点的值。初始条件X₀决定了整条轨迹。</span>
+                    </div>
+                </div>
+
+                <div class="example-box">
+                    <h4>线性向量场示例</h4>
+                    <p>考虑简单的线性向量场 u<sub>t</sub>(x) = -θx (θ > 0)：</p>
+                    <div class="math-container">
+                        <div class="math-formula">
+                            ψ<sub>t</sub>(x<sub>0</sub>) = exp(-θt) × x<sub>0</sub>
+                            <span class="math-tooltip">解析解：初始点x₀随时间指数衰减到原点。这是最简单的收缩流。</span>
+                        </div>
+                    </div>
+                    <p>物理解释：粒子总是朝向原点移动，速度与距离成正比。</p>
+                </div>
+
+                <p>近期的Rectified Flow将生成路径"拉直"为近似线性的轨迹，以提升采样效率与可控性<sup><a
+                            href="#Liu_2022_RectifiedFlow">Liu_2022_RectifiedFlow</a></sup>。</p>
+
+                <div class="code-block">
+                    <span class="code-comment"># Python实现：使用欧拉方法模拟ODE</span>
+                    <span class="code-keyword">import</span> numpy <span class="code-keyword">as</span> np
+                    <span class="code-keyword">import</span> torch
+                    <span class="code-keyword">import</span> torch.nn <span class="code-keyword">as</span> nn
+
+                    <span class="code-keyword">def</span> <span class="code-function">simulate_ode</span>(vector_field,
+                    x0, num_steps=<span class="code-number">100</span>):
+                    <span class="code-string">"""
+                        使用欧拉方法模拟ODE
+                        Args:
+                        vector_field: 神经网络参数化的向量场 u_θ(x, t)
+                        x0: 初始点
+                        num_steps: 离散化步数
+                        Returns:
+                        x1: 终点
+                        """</span>
+                    h = <span class="code-number">1.0</span> / num_steps <span class="code-comment"># 步长</span>
+                    x = x0
+
+                    <span class="code-keyword">for</span> i <span class="code-keyword">in</span> range(num_steps):
+                    t = i * h
+                    <span class="code-keyword">with</span> torch.no_grad():
+                    v = vector_field(x, t)
+                    x = x + h * v <span class="code-comment"># 欧拉更新: x_{t+h} = x_t + h * u_t(x_t)</span>
+
+                    <span class="code-keyword">return</span> x
+
+                    <span class="code-comment"># 更高级的求解器：Heun方法（二阶龙格-库塔）</span>
+                    <span class="code-keyword">def</span> <span class="code-function">heun_method</span>(vector_field,
+                    x0, num_steps=<span class="code-number">100</span>):
+                    <span class="code-string">"""Heun方法：更精确的ODE求解器"""</span>
+                    h = <span class="code-number">1.0</span> / num_steps
+                    x = x0
+
+                    <span class="code-keyword">for</span> i <span class="code-keyword">in</span> range(num_steps):
+                    t = i * h
+                    k1 = vector_field(x, t)
+                    x_pred = x + h * k1 <span class="code-comment"># 预测步</span>
+                    k2 = vector_field(x_pred, t + h)
+                    x = x + h * (k1 + k2) / <span class="code-number">2</span> <span class="code-comment"># 修正步</span>
+
+                    <span class="code-keyword">return</span> x
+                </div>
+
+                <div class="researcher-note">
+                    <h4>技术深度分析</h4>
+                    <ul>
+                        <li><strong>优点：</strong>正确介绍了ODE的基本概念和数值方法</li>
+                        <li><strong>缺失：</strong>没有讨论Lipschitz连续性条件对解的存在唯一性的重要性</li>
+                        <li><strong>改进建议：</strong>
+                            <ul>
+                                <li>应该讨论自适应步长求解器（如Dormand-Prince）</li>
+                                <li>需要分析数值误差累积问题</li>
+                                <li>缺少关于Neural ODE<sup><a
+                                            href="#Chen_2018_NeuralODE">Chen_2018_NeuralODE</a></sup>反向传播（伴随方法）的讨论</li>
+                                <li>建议加入连续标准化流（CNF）<sup><a
+                                            href="#Grathwohl_2019_FFJORD">Grathwohl_2019_FFJORD</a></sup>的内容</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <h3>2.2 扩散模型 (Diffusion Models)</h3>
+
+                <p>扩散模型通过在ODE基础上添加随机性，使用随机微分方程（SDE）描述：</p>
+
+                <div class="math-container">
+                    <div class="math-formula">
+                        dX<sub>t</sub> = u<sub>t</sub>(X<sub>t</sub>)dt + σ<sub>t</sub>dW<sub>t</sub><sup><a
+                                href="#Oksendal_2003_SDEBook">Oksendal_2003_SDEBook</a></sup>
+                        <span class="math-tooltip">SDE = 确定性漂移项 + 随机扩散项。W_t是布朗运动，σ_t是扩散系数。</span>
+                    </div>
+                </div>
+
+                <div class="concept-box">
+                    <h4>布朗运动 (Brownian Motion)</h4>
+                    <p>布朗运动 W = (W<sub>t</sub>)<sub>0≤t≤1</sub> 是SDE的核心，具有以下性质：</p>
+                    <ul>
+                        <li><strong>连续轨迹：</strong>t ↦ W<sub>t</sub> 连续但处处不可导</li>
+                        <li><strong>独立增量：</strong>W<sub>t</sub> - W<sub>s</sub> ~ 𝒩(0, (t-s)I<sub>d</sub>)</li>
+                        <li><strong>马尔可夫性：</strong>未来只依赖于现在，不依赖于过去</li>
+                    </ul>
+                </div>
+
+                <div class="example-box">
+                    <h4>Ornstein-Uhlenbeck过程<sup><a href="#Uhlenbeck_1930_OU">Uhlenbeck_1930_OU</a></sup></h4>
+                    <p>一个经典的SDE例子：</p>
+                    <div class="math-container">
+                        <div class="math-formula">
+                            dX<sub>t</sub> = -θX<sub>t</sub>dt + σdW<sub>t</sub>
+                            <span class="math-tooltip">均值回归过程：-θX_t将过程拉向原点，σdW_t添加随机扰动</span>
+                        </div>
+                    </div>
+                    <p>稳态分布：𝒩(0, σ²/(2θ))</p>
+                </div>
+
+                <div class="code-block">
+                    <span class="code-comment"># Euler-Maruyama方法模拟SDE</span>
+                    <span class="code-keyword">def</span> <span class="code-function">simulate_sde</span>(drift,
+                    diffusion, x0, num_steps=<span class="code-number">100</span>):
+                    <span class="code-string">"""
+                        使用Euler-Maruyama方法模拟SDE
+                        dX_t = drift(X_t, t)dt + diffusion(t)dW_t
+                        """</span>
+                    h = <span class="code-number">1.0</span> / num_steps
+                    x = x0
+
+                    <span class="code-keyword">for</span> i <span class="code-keyword">in</span> range(num_steps):
+                    t = i * h
+                    <span class="code-comment"># 漂移项</span>
+                    drift_term = drift(x, t) * h
+                    <span class="code-comment"># 扩散项：注意是sqrt(h)而不是h</span>
+                    noise = torch.randn_like(x)
+                    diffusion_term = diffusion(t) * np.sqrt(h) * noise
+                    <span class="code-comment"># Euler-Maruyama更新</span>
+                    x = x + drift_term + diffusion_term
+
+                    <span class="code-keyword">return</span> x
+
+                    <span class="code-comment"># 实现扩散模型的前向过程</span>
+                    <span class="code-keyword">class</span> <span class="code-function">DiffusionForward</span>:
+                    <span class="code-keyword">def</span> <span class="code-function">__init__</span>(self,
+                    alpha_schedule, beta_schedule):
+                    <span class="code-string">"""
+                        高斯概率路径：p_t(x|z) = N(α_t*z, β_t²*I)
+                        """</span>
+                    self.alpha = alpha_schedule <span class="code-comment"># α_t: 信号保留</span>
+                    self.beta = beta_schedule <span class="code-comment"># β_t: 噪声水平</span>
+
+                    <span class="code-keyword">def</span> <span class="code-function">sample</span>(self, z, t):
+                    <span class="code-string">"""从条件路径采样：x_t = α_t*z + β_t*ε"""</span>
+                    epsilon = torch.randn_like(z)
+                    alpha_t = self.alpha(t)
+                    beta_t = self.beta(t)
+                    <span class="code-keyword">return</span> alpha_t * z + beta_t * epsilon
+                </div>
+
+                <div class="quiz-section">
+                    <div class="quiz-question">
+                        思考题3：ODE（流模型）和SDE（扩散模型）的本质区别是什么？各有什么优缺点？
+                    </div>
+                    <button class="btn-reveal" onclick="toggleAnswer('answer2-1')">查看答案</button>
+                    <div id="answer2-1" class="quiz-answer">
+                        <h4>本质区别：</h4>
+                        <ul>
+                            <li><strong>ODE：</strong>确定性演化，给定初始点，轨迹唯一确定</li>
+                            <li><strong>SDE：</strong>随机演化，每次模拟得到不同轨迹</li>
+                        </ul>
+                        <h4>优缺点对比：</h4>
+                        <table>
+                            <tr>
+                                <th>方面</th>
+                                <th>ODE（流模型）</th>
+                                <th>SDE（扩散模型）</th>
+                            </tr>
+                            <tr>
+                                <td>可逆性</td>
+                                <td>✅ 完全可逆</td>
+                                <td>❌ 不可逆（信息损失）</td>
+                            </tr>
+                            <tr>
+                                <td>似然计算</td>
+                                <td>✅ 精确（通过雅可比行列式）</td>
+                                <td>❌ 需要近似</td>
+                            </tr>
+                            <tr>
+                                <td>采样速度</td>
+                                <td>✅ 可以使用高阶求解器</td>
+                                <td>❌ 通常需要更多步骤</td>
+                            </tr>
+                            <tr>
+                                <td>模式覆盖</td>
+                                <td>❌ 可能模式坍塌</td>
+                                <td>✅ 更好的多样性</td>
+                            </tr>
+                            <tr>
+                                <td>训练稳定性</td>
+                                <td>❌ 可能不稳定</td>
+                                <td>✅ 更稳定</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="demo-section">
+                    <h4>🎮 互动演示：向量场可视化</h4>
+                    <button class="demo-button" onclick="showDemo('vector-field')">显示2D向量场演化</button>
+                    <div id="vector-field" class="demo-output">
+                        <h4>向量场驱动的粒子演化</h4>
+                        <p>想象一个2D平面上的向量场 u(x,y) = (-y, x)（旋转场）：</p>
+                        <ul>
+                            <li>每个点都有一个"速度箭头"</li>
+                            <li>粒子沿着箭头方向移动</li>
+                            <li>ODE：所有粒子确定性地沿圆形轨迹运动</li>
+                            <li>SDE：添加随机扰动，轨迹变成螺旋状</li>
+                        </ul>
+                        <p>这就是流模型如何通过向量场"雕刻"概率分布的直观理解。</p>
+                        <div style="margin:10px 0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <label style="color:#2d3436;">
+                                噪声 σ
+                                <input id="vf-sigma" type="range" min="0" max="0.6" step="0.02" value="0"
+                                    style="width:200px; vertical-align:middle;">
+                                <span id="vf-sigma-value">0.00</span>
+                            </label>
+                            <button class="demo-button" id="vf-toggle" type="button">开始</button>
+                            <button class="demo-button" id="vf-reset" type="button">重置</button>
+                        </div>
+                        <canvas id="vf-canvas" width="520" height="360"
+                            style="border:1px solid #ccc; border-radius:8px; background:white;"></canvas>
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <h4>📌 第2章要点总结</h4>
+                    <ul>
+                        <li>流模型使用ODE描述确定性演化：dX<sub>t</sub>/dt = u<sub>t</sub>(X<sub>t</sub>)</li>
+                        <li>扩散模型使用SDE添加随机性：dX<sub>t</sub> = u<sub>t</sub>(X<sub>t</sub>)dt + σ<sub>t</sub>dW<sub>t</sub>
+                        </li>
+                        <li>向量场u<sub>t</sub>由神经网络参数化</li>
+                        <li>数值求解使用欧拉方法（ODE）或Euler-Maruyama方法（SDE）</li>
+                        <li>扩散模型牺牲可逆性换取更好的稳定性和多样性</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Chapter 3: Constructing Training Target -->
+            <div class="chapter" id="chapter3">
+                <h2>第3章：构建训练目标 - 数学推导与物理直觉</h2>
+
+                <p>本章是整个理论框架的核心，我们将推导训练目标的数学形式。关键问题：如何找到一个向量场u<sup>target</sup><sub>t</sub>，使得其对应的ODE/SDE能将噪声分布转换为数据分布？
+                </p>
+
+                <h3>3.1 概率路径 (Probability Paths)</h3>
+
+                <div class="concept-box">
+                    <h4>条件概率路径</h4>
+                    <p>定义一族分布p<sub>t</sub>(x|z)，满足边界条件：</p>
+                    <ul>
+                        <li>p<sub>0</sub>(·|z) = p<sub>init</sub> = 𝒩(0, I) （纯噪声）</li>
+                        <li>p<sub>1</sub>(·|z) = δ<sub>z</sub> （确定性数据点）</li>
+                    </ul>
+                    <p>物理解释：概率路径描述了数据点z如何逐渐"溶解"到噪声中。</p>
+                </div>
+
+                <div class="example-box">
+                    <h4>高斯概率路径（最重要的例子）</h4>
+                    <div class="math-container">
+                        <div class="math-formula">
+                            p<sub>t</sub>(x|z) = 𝒩(α<sub>t</sub>z, β<sub>t</sub>²I)
+                            <span class="math-tooltip">高斯分布，均值α_t*z，方差β_t²。当t从0到1，分布从噪声逐渐聚焦到数据点z。</span>
+                        </div>
+                    </div>
+                    <p>噪声调度器 (noise scheduler) 的选择：</p>
+                    <ul>
+                        <li><strong>线性调度：</strong>α<sub>t</sub> = t, β<sub>t</sub> = 1-t</li>
+                        <li><strong>余弦调度：</strong>更平滑的过渡，实践中效果更好</li>
+                        <li><strong>学习的调度：</strong>端到端优化，理论上最优</li>
+                    </ul>
+                </div>
+
+                <div class="researcher-note">
+                    <h4>关键洞察</h4>
+                    <ul>
+                        <li><strong>创新：</strong>概率路径框架统一了各种扩散模型变体</li>
+                        <li><strong>不足：</strong>文章主要关注高斯路径，忽略了其他可能性</li>
+                        <li><strong>改进方向：</strong>
+                            <ul>
+                                <li>探索最优传输（OT）路径，可能减少采样步数</li>
+                                <li>研究非欧几里得空间（如流形）上的概率路径</li>
+                                <li>自适应路径选择，根据数据特性优化</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <h3>3.2 边际化技巧与向量场构建</h3>
+
+                <p>核心定理（边际化技巧）揭示了如何从条件向量场构建边际向量场：</p>
+
+                <div class="math-container">
+                    <div class="math-formula">
+                        u<sup>target</sup><sub>t</sub>(x) = ∫ u<sup>target</sup><sub>t</sub>(x|z) ·
+                        (p<sub>t</sub>(x|z)p<sub>data</sub>(z))/(p<sub>t</sub>(x)) dz
+                        <span class="math-tooltip">边际向量场是条件向量场的加权平均，权重是后验概率p(z|x,t)。</span>
+                    </div>
+                </div>
+
+                <div class="example-box">
+                    <h4>高斯路径的条件向量场（闭式解）</h4>
+                    <div class="math-container">
+                        <div class="math-formula">
+                            u<sup>target</sup><sub>t</sub>(x|z) = (α̇<sub>t</sub> -
+                            (β̇<sub>t</sub>/β<sub>t</sub>)α<sub>t</sub>)z + (β̇<sub>t</sub>/β<sub>t</sub>)x
+                            <span class="math-tooltip">这个公式可以通过要求流ψ_t(x|z) = α_t*z + β_t*x满足ODE推导得出。</span>
+                        </div>
+                    </div>
+                    <p>直观理解：向量场由两部分组成：</p>
+                    <ul>
+                        <li>指向数据点z的"吸引力"</li>
+                        <li>与当前位置x相关的"漂移"</li>
+                    </ul>
+                </div>
+
+                <h3>3.3 连续性方程与Fokker-Planck方程</h3>
+
+                <div class="concept-box">
+                    <h4>连续性方程（ODE情况）<sup><a href="#Evans_2010_PDE">Evans_2010_PDE</a></sup></h4>
+                    <div class="math-container">
+                        <div class="math-formula">
+                            ∂<sub>t</sub>p<sub>t</sub>(x) = -∇·(p<sub>t</sub>u<sub>t</sub>)(x)
+                            <span class="math-tooltip">概率密度的时间变化率等于概率流的负散度。这是概率质量守恒的数学表达。</span>
+                        </div>
+                    </div>
+                    <p><strong>物理直觉：</strong>想象概率密度如同不可压缩流体，向量场描述流速，散度描述净流出。</p>
+                </div>
+
+                <div class="concept-box">
+                    <h4>Fokker-Planck方程（SDE情况）<sup><a
+                                href="#Fokker_1914_FokkerPlanck">Fokker_1914_FokkerPlanck</a></sup></h4>
+                    <div class="math-container">
+                        <div class="math-formula">
+                            ∂<sub>t</sub>p<sub>t</sub>(x) = -∇·(p<sub>t</sub>u<sub>t</sub>)(x) +
+                            (σ<sub>t</sub>²/2)Δp<sub>t</sub>(x)
+                            <span class="math-tooltip">添加了扩散项（拉普拉斯算子Δ），描述布朗运动引起的概率扩散。</span>
+                        </div>
+                    </div>
+                    <p><strong>与热方程的联系：</strong>扩散项与热传导方程相同，描述"概率热量"的扩散。</p>
+                </div>
+
+                <div class="code-block">
+                    <span class="code-comment"># 实现概率路径和向量场</span>
+                    <span class="code-keyword">class</span> <span class="code-function">GaussianProbabilityPath</span>:
+                    <span class="code-keyword">def</span> <span class="code-function">__init__</span>(self,
+                    schedule_type=<span class="code-string">'linear'</span>):
+                    <span class="code-string">"""
+                        实现高斯概率路径 p_t(x|z) = N(α_t*z, β_t²*I)
+                        """</span>
+                    self.schedule_type = schedule_type
+
+                    <span class="code-keyword">def</span> <span class="code-function">alpha_beta</span>(self, t):
+                    <span class="code-string">"""返回α_t和β_t"""</span>
+                    <span class="code-keyword">if</span> self.schedule_type == <span
+                        class="code-string">'linear'</span>:
+                    alpha_t = t
+                    beta_t = <span class="code-number">1</span> - t
+                    <span class="code-keyword">elif</span> self.schedule_type == <span
+                        class="code-string">'cosine'</span>:
+                    <span class="code-comment"># 余弦调度，更平滑的过渡</span>
+                    s = <span class="code-number">0.008</span> <span class="code-comment"># 小的偏移避免奇异性</span>
+                    f = torch.cos((t + s) / (<span class="code-number">1</span> + s) * np.pi / <span
+                        class="code-number">2</span>) ** <span class="code-number">2</span>
+                    alpha_t = f / f[<span class="code-number">0</span>]
+                    beta_t = torch.sqrt(<span class="code-number">1</span> - alpha_t ** <span
+                        class="code-number">2</span>)
+                    <span class="code-keyword">return</span> alpha_t, beta_t
+
+                    <span class="code-keyword">def</span> <span
+                        class="code-function">conditional_vector_field</span>(self, x, z, t):
+                    <span class="code-string">"""
+                        计算条件向量场 u^target_t(x|z)
+                        """</span>
+                    alpha_t, beta_t = self.alpha_beta(t)
+                    <span class="code-comment"># 计算时间导数</span>
+                    eps = <span class="code-number">1e-5</span>
+                    alpha_t_plus, beta_t_plus = self.alpha_beta(t + eps)
+                    alpha_dot = (alpha_t_plus - alpha_t) / eps
+                    beta_dot = (beta_t_plus - beta_t) / eps
+
+                    <span class="code-comment"># 条件向量场公式</span>
+                    coeff_z = alpha_dot - (beta_dot / beta_t) * alpha_t
+                    coeff_x = beta_dot / beta_t
+
+                    <span class="code-keyword">return</span> coeff_z * z + coeff_x * x
+
+                    <span class="code-keyword">def</span> <span class="code-function">score_function</span>(self, x, z,
+                    t):
+                    <span class="code-string">"""
+                        计算条件得分函数 ∇log p_t(x|z)
+                        """</span>
+                    alpha_t, beta_t = self.alpha_beta(t)
+                    <span class="code-keyword">return</span> -(x - alpha_t * z) / (beta_t ** <span
+                        class="code-number">2</span>)
+                </div>
+
+                <div class="quiz-section">
+                    <div class="quiz-question">
+                        思考题4：为什么边际化技巧如此重要？它解决了什么根本问题？
+                    </div>
+                    <button class="btn-reveal" onclick="toggleAnswer('answer3-1')">查看答案</button>
+                    <div id="answer3-1" class="quiz-answer">
+                        <h4>边际化技巧的重要性：</h4>
+                        <p><strong>根本问题：</strong>我们需要边际向量场u<sup>target</sup><sub>t</sub>(x)来训练模型，但它涉及难以处理的积分：</p>
+                        <p style="text-align: center;">u<sup>target</sup><sub>t</sub>(x) = ∫
+                            u<sup>target</sup><sub>t</sub>(x|z)p(z|x,t)dz</p>
+                        <p>其中后验p(z|x,t)通常无法计算。</p>
+
+                        <h4>边际化技巧的解决方案：</h4>
+                        <ol>
+                            <li><strong>分解问题：</strong>将复杂的边际向量场分解为简单的条件向量场</li>
+                            <li><strong>利用对称性：</strong>证明最小化条件流匹配损失等价于最小化边际流匹配损失</li>
+                            <li><strong>避免积分：</strong>训练时只需要条件向量场，它有闭式解</li>
+                        </ol>
+
+                        <p><strong>这是整个流匹配/扩散模型框架能够工作的关键！</strong></p>
+                    </div>
+                </div>
+
+                <div class="demo-section">
+                    <h4>🎮 互动演示：概率路径演化</h4>
+                    <button class="demo-button" onclick="showDemo('prob-path')">观察概率密度演化</button>
+                    <div id="prob-path" class="demo-output">
+                        <h4>从噪声到数据的概率演化</h4>
+                        <p>考虑1D情况，数据分布是两个高斯峰：</p>
+                        <ul>
+                            <li><strong>t=0：</strong>标准高斯分布（噪声）</li>
+                            <li><strong>t=0.25：</strong>开始出现双峰结构</li>
+                            <li><strong>t=0.5：</strong>两个峰逐渐分离</li>
+                            <li><strong>t=0.75：</strong>峰变得更尖锐</li>
+                            <li><strong>t=1：</strong>收敛到数据分布</li>
+                        </ul>
+                        <p>这个过程可以通过求解Fokker-Planck方程精确描述！</p>
+                        <div style="margin:10px 0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <label style="color:#2d3436;">
+                                时间 t
+                                <input id="prob-t" type="range" min="0" max="1" step="0.01" value="0"
+                                    style="width:260px; vertical-align:middle;">
+                                <span id="prob-t-value">t = 0.00</span>
+                            </label>
+                        </div>
+                        <canvas id="prob-canvas" width="560" height="260"
+                            style="border:1px solid #ccc; border-radius:8px; background:white;"></canvas>
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <h4>📌 第3章要点总结</h4>
+                    <ul>
+                        <li>概率路径p<sub>t</sub>(x|z)定义了从噪声到数据的插值</li>
+                        <li>边际化技巧允许我们从条件向量场构建边际向量场</li>
+                        <li>连续性方程和Fokker-Planck方程描述概率密度的演化</li>
+                        <li>高斯概率路径有闭式的条件向量场和得分函数</li>
+                        <li>SDE通过添加得分函数项扩展ODE：u<sub>t</sub> + (σ²/2)∇log p<sub>t</sub></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Chapter 4: Training -->
+            <div class="chapter" id="chapter4">
+                <h2>第4章：训练生成模型 - 算法实现与优化</h2>
+
+                <p>本章将前面的理论转化为实际的训练算法。核心问题：如何训练神经网络u<sup>θ</sup><sub>t</sub>来近似目标向量场u<sup>target</sup><sub>t</sub>？</p>
+
+                <h3>4.1 流匹配 (Flow Matching)</h3>
+
+                <div class="concept-box">
+                    <h4>条件流匹配损失<sup><a href="#Lipman_2023_FlowMatching">Lipman_2023_FlowMatching</a></sup></h4>
+                    <div class="math-container">
+                        <div class="math-formula">
+                            L<sub>CFM</sub>(θ) = 𝔼<sub>t,z,x</sub>[||u<sup>θ</sup><sub>t</sub>(x) -
+                            u<sup>target</sup><sub>t</sub>(x|z)||²]
+                            <span class="math-tooltip">期望对时间t～U[0,1]、数据z～p_data、噪声x～p_t(·|z)取平均</span>
+                        </div>
+                    </div>
+                    <p><strong>关键定理：</strong>L<sub>CFM</sub> = L<sub>FM</sub> + const，梯度相同！</p>
+                </div>
+
+                <div class="code-block">
+                    <span class="code-comment"># 完整的流匹配训练实现</span>
+                    <span class="code-keyword">import</span> torch
+                    <span class="code-keyword">import</span> torch.nn <span class="code-keyword">as</span> nn
+                    <span class="code-keyword">import</span> torch.optim <span class="code-keyword">as</span> optim
+                    <span class="code-keyword">from</span> torch.utils.data <span class="code-keyword">import</span>
+                    DataLoader
+
+                    <span class="code-keyword">class</span> <span class="code-function">FlowMatchingTrainer</span>:
+                    <span class="code-keyword">def</span> <span class="code-function">__init__</span>(self, model,
+                    data_loader, device=<span class="code-string">'cuda'</span>):
+                    <span class="code-string">"""
+                        流匹配训练器
+                        Args:
+                        model: 神经网络 u^θ_t(x, t)
+                        data_loader: 数据加载器
+                        """</span>
+                    self.model = model.to(device)
+                    self.data_loader = data_loader
+                    self.device = device
+                    self.optimizer = optim.Adam(model.parameters(), lr=<span class="code-number">1e-4</span>)
+
+                    <span class="code-keyword">def</span> <span class="code-function">compute_loss</span>(self, batch):
+                    <span class="code-string">"""
+                        计算条件流匹配损失（高斯CondOT路径）
+                        """</span>
+                    z = batch.to(self.device) <span class="code-comment"># 数据样本</span>
+                    batch_size = z.shape[<span class="code-number">0</span>]
+
+                    <span class="code-comment"># 1. 采样随机时间 t ~ U[0,1]</span>
+                    t = torch.rand(batch_size, <span class="code-number">1</span>, device=self.device)
+
+                    <span class="code-comment"># 2. 采样噪声 ε ~ N(0,I)</span>
+                    epsilon = torch.randn_like(z)
+
+                    <span class="code-comment"># 3. 构建插值样本 x_t = t*z + (1-t)*ε</span>
+                    x_t = t * z + (<span class="code-number">1</span> - t) * epsilon
+
+                    <span class="code-comment"># 4. 目标向量场 u^target_t(x|z) = z - ε</span>
+                    u_target = z - epsilon
+
+                    <span class="code-comment"># 5. 模型预测</span>
+                    u_pred = self.model(x_t, t)
+
+                    <span class="code-comment"># 6. MSE损失</span>
+                    loss = nn.MSELoss()(u_pred, u_target)
+
+                    <span class="code-keyword">return</span> loss
+
+                    <span class="code-keyword">def</span> <span class="code-function">train_epoch</span>(self):
+                    <span class="code-string">"""训练一个epoch"""</span>
+                    total_loss = <span class="code-number">0</span>
+                    <span class="code-keyword">for</span> batch <span class="code-keyword">in</span> self.data_loader:
+                    <span class="code-comment"># 前向传播</span>
+                    loss = self.compute_loss(batch)
+
+                    <span class="code-comment"># 反向传播</span>
+                    self.optimizer.zero_grad()
+                    loss.backward()
+
+                    <span class="code-comment"># 梯度裁剪（可选，但推荐）</span>
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), <span class="code-number">1.0</span>)
+
+                    <span class="code-comment"># 参数更新</span>
+                    self.optimizer.step()
+
+                    total_loss += loss.item()
+
+                    <span class="code-keyword">return</span> total_loss / len(self.data_loader)
+
+                    <span class="code-comment"># 采样算法</span>
+                    <span class="code-keyword">def</span> <span class="code-function">sample_flow_model</span>(model,
+                    num_samples, num_steps=<span class="code-number">50</span>, device=<span
+                        class="code-string">'cuda'</span>):
+                    <span class="code-string">"""
+                        从训练好的流模型采样
+                        """</span>
+                    <span class="code-keyword">with</span> torch.no_grad():
+                    <span class="code-comment"># 初始化：从高斯噪声采样</span>
+                    x = torch.randn(num_samples, model.input_dim, device=device)
+
+                    <span class="code-comment"># ODE求解：欧拉方法</span>
+                    dt = <span class="code-number">1.0</span> / num_steps
+                    <span class="code-keyword">for</span> i <span class="code-keyword">in</span> range(num_steps):
+                    t = torch.full((num_samples, <span class="code-number">1</span>), i * dt, device=device)
+                    v = model(x, t)
+                    x = x + dt * v
+
+                    <span class="code-keyword">return</span> x
+                </div>
+
+                <div class="demo-section">
+                    <h4>🎮 互动演示：Flow Matching 插值与目标向量</h4>
+                    <button class="demo-button" onclick="showDemo('flow-matching')">显示演示</button>
+                    <div id="flow-matching" class="demo-output">
+                        <div style="margin:10px 0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <label style="color:#2d3436;">
+                                时间 t
+                                <input id="fm-t" type="range" min="0" max="1" step="0.01" value="0.5"
+                                    style="width:260px; vertical-align:middle;">
+                                <span id="fm-t-value">t = 0.50</span>
+                            </label>
+                            <button class="demo-button" id="fm-resample" type="button">重新采样 (z, ε)</button>
+                        </div>
+                        <canvas id="fm-canvas" width="520" height="300"
+                            style="border:1px solid #ccc; border-radius:8px; background:white;"></canvas>
+                        <p style="margin-top:10px; color:#2d3436;">蓝：ε（噪声），绿色：z（数据）。黑点：x_t = t·z + (1−t)·ε。红箭头：u_target
+                            = z − ε。</p>
+                    </div>
+                </div>
+
+                <div class="researcher-note">
+                    <h4>实践优化建议</h4>
+                    <ul>
+                        <li><strong>时间采样策略：</strong>
+                            <ul>
+                                <li>均匀采样简单但可能次优</li>
+                                <li>考虑重要性采样，在困难时间点（如t≈0.5）多采样</li>
+                                <li>课程学习：从简单（t接近1）到困难</li>
+                            </ul>
+                        </li>
+                        <li><strong>数值稳定性：</strong>
+                            <ul>
+                                <li>使用混合精度训练（AMP）加速</li>
+                                <li>添加小的正则化项避免数值问题</li>
+                                <li>监控梯度范数，必要时调整学习率</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <h3>4.2 得分匹配 (Score Matching)</h3>
+
+                <div class="concept-box">
+                    <h4>去噪得分匹配<sup><a href="#Hyvarinen_2005_ScoreMatching">Hyvarinen_2005_ScoreMatching</a></sup></h4>
+                    <p>对于高斯概率路径，得分函数有简单形式：</p>
+                    <div class="math-container">
+                        <div class="math-formula">
+                            ∇log p<sub>t</sub>(x|z) = -(x - α<sub>t</sub>z)/(β<sub>t</sub>²)
+                            <span class="math-tooltip">得分指向数据点的方向，强度与噪声水平成反比</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="example-box">
+                    <h4>噪声预测参数化</h4>
+                    <p>DDPM<sup><a href="#Ho_2020_DDPM">Ho_2020_DDPM</a></sup>的关键洞察：重新参数化为噪声预测：</p>
+                    <div class="math-container">
+                        <div class="math-formula">
+                            ε<sup>θ</sup><sub>t</sub>(x) = -β<sub>t</sub>s<sup>θ</sup><sub>t</sub>(x)
+                            <span class="math-tooltip">预测添加的噪声而不是得分，数值更稳定</span>
+                        </div>
+                    </div>
+                    <p>损失函数简化为：L = 𝔼[||ε<sup>θ</sup><sub>t</sub>(x<sub>t</sub>) - ε||²]</p>
+                </div>
+
+                <div class="code-block">
+                    <span class="code-comment"># 得分匹配训练（DDPM风格）</span>
+                    <span class="code-keyword">class</span> <span class="code-function">DiffusionTrainer</span>:
+                    <span class="code-keyword">def</span> <span class="code-function">__init__</span>(self, model,
+                    noise_schedule):
+                    <span class="code-string">"""
+                        扩散模型训练器（噪声预测参数化）
+                        """</span>
+                    self.model = model <span class="code-comment"># ε^θ_t(x, t)</span>
+                    self.noise_schedule = noise_schedule
+
+                    <span class="code-keyword">def</span> <span class="code-function">compute_loss</span>(self, z):
+                    <span class="code-string">"""
+                        计算去噪得分匹配损失
+                        """</span>
+                    batch_size = z.shape[<span class="code-number">0</span>]
+
+                    <span class="code-comment"># 采样时间步</span>
+                    t = torch.randint(<span class="code-number">0</span>, self.num_timesteps, (batch_size,))
+
+                    <span class="code-comment"># 获取噪声调度参数</span>
+                    alpha_t = self.noise_schedule.alpha(t)
+                    beta_t = self.noise_schedule.beta(t)
+
+                    <span class="code-comment"># 采样噪声</span>
+                    epsilon = torch.randn_like(z)
+
+                    <span class="code-comment"># 前向扩散：x_t = α_t*z + β_t*ε</span>
+                    x_t = alpha_t * z + beta_t * epsilon
+
+                    <span class="code-comment"># 预测噪声</span>
+                    epsilon_pred = self.model(x_t, t)
+
+                    <span class="code-comment"># 简单损失（可以加权）</span>
+                    loss = nn.MSELoss()(epsilon_pred, epsilon)
+
+                    <span class="code-keyword">return</span> loss
+
+                    <span class="code-keyword">def</span> <span class="code-function">sample_ddpm</span>(self,
+                    num_samples):
+                    <span class="code-string">"""
+                        DDPM采样（随机）
+                        """</span>
+                    x = torch.randn(num_samples, self.model.input_dim)
+
+                    <span class="code-keyword">for</span> t <span class="code-keyword">in</span>
+                    reversed(range(self.num_timesteps)):
+                    <span class="code-comment"># 预测噪声</span>
+                    epsilon_pred = self.model(x, t)
+
+                    <span class="code-comment"># 计算均值</span>
+                    alpha_t = self.noise_schedule.alpha(t)
+                    beta_t = self.noise_schedule.beta(t)
+                    mean = (x - beta_t * epsilon_pred) / alpha_t
+
+                    <span class="code-comment"># 添加噪声（除了最后一步）</span>
+                    <span class="code-keyword">if</span> t > <span class="code-number">0</span>:
+                    noise = torch.randn_like(x)
+                    sigma_t = self.noise_schedule.posterior_std(t)
+                    x = mean + sigma_t * noise
+                    <span class="code-keyword">else</span>:
+                    x = mean
+
+                    <span class="code-keyword">return</span> x
+
+                    <span class="code-keyword">def</span> <span class="code-function">sample_ddim</span>(self,
+                    num_samples, steps=<span class="code-number">50</span>):
+                    <span class="code-string">"""
+                        DDIM采样（确定性，更快）
+                        """</span>
+                    <span class="code-comment"># DDIM<sup><a
+                                href="#Song_2021_DDIM">Song_2021_DDIM</a></sup>允许跳过时间步，实现快速采样</span>
+                    <span class="code-comment"># 这里省略详细实现</span>
+                    <span class="code-keyword">pass</span>
+                </div>
+
+                <h3>4.3 流匹配与扩散模型的统一视角</h3>
+
+                <div class="concept-box">
+                    <h4>转换公式（高斯路径）</h4>
+                    <p>向量场和得分函数可以相互转换：</p>
+                    <div class="math-container">
+                        <div class="math-formula">
+                            u<sub>t</sub>(x) = β²<sub>t</sub>(α̇<sub>t</sub>/α<sub>t</sub> -
+                            β̇<sub>t</sub>/β<sub>t</sub>)∇log p<sub>t</sub>(x) + (α̇<sub>t</sub>/α<sub>t</sub>)x
+                            <span class="math-tooltip">概率流ODE：将得分函数转换为向量场</span>
+                        </div>
+                    </div>
+                    <p>这意味着只需训练一个网络！此外，一致性模型（Consistency Models）提出在一步或少步内近似概率流轨迹<sup><a
+                                href="#Song_2023_ConsistencyModels">Song_2023_ConsistencyModels</a></sup>。</p>
+                </div>
+
+                <div class="quiz-section">
+                    <div class="quiz-question">
+                        思考题5：为什么实践中DDPM的噪声预测参数化比直接预测得分更稳定？
+                    </div>
+                    <button class="btn-reveal" onclick="toggleAnswer('answer4-1')">查看答案</button>
+                    <div id="answer4-1" class="quiz-answer">
+                        <h4>噪声预测的优势：</h4>
+                        <ol>
+                            <li><strong>数值范围：</strong>
+                                <ul>
+                                    <li>噪声ε～𝒩(0,I)，范围有界且已知</li>
+                                    <li>得分∇log p可能有很大的范围，特别是在低概率区域</li>
+                                </ul>
+                            </li>
+                            <li><strong>训练稳定性：</strong>
+                                <ul>
+                                    <li>当β<sub>t</sub>→0（接近数据），得分会爆炸</li>
+                                    <li>噪声预测自然处理这种情况</li>
+                                </ul>
+                            </li>
+                            <li><strong>直观性：</strong>
+                                <ul>
+                                    <li>网络学习"去噪"，概念简单</li>
+                                    <li>类似于传统的图像去噪任务</li>
+                                </ul>
+                            </li>
+                            <li><strong>损失加权：</strong>
+                                <ul>
+                                    <li>简单的MSE损失对所有时间步平等对待</li>
+                                    <li>隐式实现了合理的重要性加权</li>
+                                </ul>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="quiz-section">
+                    <div class="quiz-question">
+                        思考题6：流匹配和扩散模型在实践中如何选择？各自的优势场景？
+                    </div>
+                    <button class="btn-reveal" onclick="toggleAnswer('answer4-2')">查看答案</button>
+                    <div id="answer4-2" class="quiz-answer">
+                        <h4>选择指南：</h4>
+                        <table>
+                            <tr>
+                                <th>场景</th>
+                                <th>推荐方法</th>
+                                <th>原因</th>
+                            </tr>
+                            <tr>
+                                <td>需要快速采样</td>
+                                <td>流匹配（ODE）</td>
+                                <td>可以使用高阶求解器，确定性</td>
+                            </tr>
+                            <tr>
+                                <td>需要精确似然</td>
+                                <td>流匹配（CNF）</td>
+                                <td>可以计算精确的log-likelihood</td>
+                            </tr>
+                            <tr>
+                                <td>高分辨率图像</td>
+                                <td>扩散模型</td>
+                                <td>更稳定，更好的感知质量</td>
+                            </tr>
+                            <tr>
+                                <td>需要可控生成</td>
+                                <td>扩散模型</td>
+                                <td>更容易加入引导和控制</td>
+                            </tr>
+                            <tr>
+                                <td>科学应用</td>
+                                <td>流匹配</td>
+                                <td>可逆性，保持物理约束</td>
+                            </tr>
+                        </table>
+                        <p><strong>最新趋势：</strong>许多SOTA模型（如SD3）使用流匹配训练，但保留SDE采样选项，结合两者优势。</p>
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <h4>📌 第4章要点总结</h4>
+                    <ul>
+                        <li>条件流匹配损失：回归到条件向量场u<sup>target</sup><sub>t</sub>(x|z)</li>
+                        <li>去噪得分匹配：预测添加的噪声ε</li>
+                        <li>两种方法在高斯路径下等价，可以相互转换</li>
+                        <li>实践考虑：时间采样策略、参数化选择、数值稳定性</li>
+                        <li>采样方法：ODE（确定性）vs SDE（随机性）</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Chapter 5: Building an Image Generator -->
+            <div class="chapter" id="chapter5">
+                <h2>第5章：构建图像生成器 - 工程实践与前沿应用</h2>
+
+                <p>本章将理论转化为实际的图像生成系统。我们将探讨条件生成、神经网络架构选择，以及工业级系统的设计。</p>
+
+                <h3>5.1 条件生成与引导 (Guidance)</h3>
+
+                <div class="concept-box">
+                    <h4>条件生成的数学框架</h4>
+                    <p>目标：从p<sub>data</sub>(x|y)采样，其中y是条件（如文本提示）</p>
+                    <p>挑战：如何将条件信息注入到向量场中？</p>
+                </div>
+
+                <div class="example-box">
+                    <h4>无分类器引导 (Classifier-Free Guidance, CFG)<sup><a href="#Ho_2022_CFG">Ho_2022_CFG</a></sup></h4>
+                    <div class="math-container">
+                        <div class="math-formula">
+                            ũ<sub>t</sub>(x|y) = (1-w)u<sub>t</sub>(x|∅) + w·u<sub>t</sub>(x|y)
+                            <span class="math-tooltip">w>1放大条件影响，w=7.5是常用值。∅表示空条件。</span>
+                        </div>
+                    </div>
+                    <p>关键洞察：同时训练条件和无条件模型，推理时线性组合。</p>
+                </div>
+
+                <div class="code-block">
+                    <span class="code-comment"># 实现无分类器引导</span>
+                    <span class="code-keyword">class</span> <span
+                        class="code-function">ConditionalFlowModel</span>(nn.Module):
+                    <span class="code-keyword">def</span> <span class="code-function">__init__</span>(self, base_model,
+                    text_encoder):
+                    <span class="code-string">"""
+                        条件流模型
+                        Args:
+                        base_model: U-Net或DiT架构
+                        text_encoder: CLIP或T5文本编码器
+                        """</span>
+                    super().__init__()
+                    self.base_model = base_model
+                    self.text_encoder = text_encoder
+                    self.null_embedding = nn.Parameter(torch.randn(<span class="code-number">768</span>)) <span
+                        class="code-comment"># 学习的空条件</span>
+
+                    <span class="code-keyword">def</span> <span class="code-function">forward</span>(self, x, t,
+                    text=None, cfg_scale=<span class="code-number">7.5</span>):
+                    <span class="code-string">"""
+                        前向传播with CFG
+                        """</span>
+                    <span class="code-keyword">if</span> text <span class="code-keyword">is</span> None:
+                    <span class="code-comment"># 训练时，随机dropout条件</span>
+                    <span class="code-keyword">if</span> self.training <span class="code-keyword">and</span>
+                    torch.rand(<span class="code-number">1</span>) < <span class="code-number">0.1</span>: <span
+                            class="code-comment"># 10% dropout</span>
+                        text_emb = self.null_embedding.unsqueeze(<span
+                            class="code-number">0</span>).expand(x.shape[<span class="code-number">0</span>], -<span
+                            class="code-number">1</span>)
+                        <span class="code-keyword">else</span>:
+                        text_emb = self.text_encoder(text)
+                        <span class="code-keyword">return</span> self.base_model(x, t, text_emb)
+                        <span class="code-keyword">else</span>:
+                        <span class="code-comment"># 推理时，计算CFG</span>
+                        <span class="code-keyword">with</span> torch.no_grad():
+                        <span class="code-comment"># 无条件预测</span>
+                        null_emb = self.null_embedding.unsqueeze(<span
+                            class="code-number">0</span>).expand(x.shape[<span class="code-number">0</span>], -<span
+                            class="code-number">1</span>)
+                        uncond_pred = self.base_model(x, t, null_emb)
+                        <span class="code-comment"># 条件预测</span>
+                        cond_emb = self.text_encoder(text)
+                        cond_pred = self.base_model(x, t, cond_emb)
+                        <span class="code-comment"># 线性组合：ũ_t = (1-w)·u_t(x|∅) + w·u_t(x|y)</span>
+                        <span class="code-keyword">return</span> (<span class="code-number">1</span> - cfg_scale) *
+                        uncond_pred + cfg_scale * cond_pred
+                </div>
+
+                <h3>5.2 架构选择：U-Net 与 DiT</h3>
+
+                <div class="concept-box">
+                    <h4>架构对比</h4>
+                    <table>
+                        <tr>
+                            <th>维度</th>
+                            <th>U-Net（卷积）<sup><a href="#Ronneberger_2015_UNet">Ronneberger_2015_UNet</a></sup></th>
+                            <th>DiT（Diffusion Transformer）<sup><a href="#Peebles_2023_DiT">Peebles_2023_DiT</a></sup>
+                            </th>
+                        </tr>
+                        <tr>
+                            <td>归纳偏置</td>
+                            <td>天然平移不变，局部性强</td>
+                            <td>全局建模能力强，长程依赖</td>
+                        </tr>
+                        <tr>
+                            <td>内存/速度</td>
+                            <td>高效，易于大分辨率</td>
+                            <td>注意力成本高，可用稀疏/分块优化</td>
+                        </tr>
+                        <tr>
+                            <td>多模态条件</td>
+                            <td>通过FiLM/跨注意力注入</td>
+                            <td>原生注意力跨模态融合更灵活</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <p>高分辨率与效率方面，潜空间扩散（Latent Diffusion Models, LDM）在压缩的自编码器潜空间中训练，大幅降低成本并保持质量<sup><a
+                            href="#Rombach_2022_LDM">Rombach_2022_LDM</a></sup>。</p>
+
+                <div class="code-block">
+                    <span class="code-comment"># DiT风格Block示意（伪代码）</span>
+                    <span class="code-keyword">class</span> <span class="code-function">DiTBlock</span>(nn.Module):
+                    <span class="code-keyword">def</span> <span class="code-function">__init__</span>(self, dim,
+                    num_heads):
+                    <span class="code-keyword">super</span>().__init__()
+                    self.norm1 = nn.LayerNorm(dim)
+                    self.attn = nn.MultiheadAttention(dim, num_heads, batch_first=<span
+                        class="code-keyword">True</span>)
+                    self.norm2 = nn.LayerNorm(dim)
+                    self.mlp = nn.Sequential(nn.Linear(dim, <span class="code-number">4</span>*dim), nn.GELU(),
+                    nn.Linear(<span class="code-number">4</span>*dim, dim))
+                    <span class="code-keyword">def</span> <span class="code-function">forward</span>(self, x, cond):
+                    <span class="code-comment"># 将时间/文本条件融合为Key/Value或通过FiLM调制</span>
+                    x = x + self.attn(self.norm1(x), cond, cond)[<span class="code-number">0</span>]
+                    x = x + self.mlp(self.norm2(x))
+                    <span class="code-keyword">return</span> x
+                </div>
+
+                <div class="researcher-note">
+                    <h4>工程建议</h4>
+                    <ul>
+                        <li>高分辨率首选U-Net；跨模态/大语义跨度任务可首选DiT。</li>
+                        <li>DiT需使用分块注意力、FP8/AMP与激活检查点以控制显存。</li>
+                        <li>时间嵌入（t-embedding）应通过正弦位置编码+MLP，以提高时间感知。</li>
+                    </ul>
+                </div>
+
+                <h3>5.3 采样器与加速 (Samplers)</h3>
+
+                <div class="concept-box">
+                    <h4>采样策略</h4>
+                    <ul>
+                        <li><strong>ODE采样</strong>：确定性，支持高阶求解（Heun、RK3、DPM-Solver<sup><a
+                                    href="#Lu_2023_DPMSolver">Lu_2023_DPMSolver</a></sup>、DPM-Solver-++<sup><a
+                                    href="#Lu_2022_DPMSolverPP">Lu_2022_DPMSolverPP</a></sup>）。</li>
+                        <li><strong>SDE采样</strong>：随机性提供多样性，可做退火与温度控制。</li>
+                        <li><strong>步数与质量权衡</strong>：步数越少越快，但需更平滑/稳定的向量场。</li>
+                    </ul>
+                </div>
+
+                <div class="demo-section">
+                    <h4>🎮 互动演示：CFG权重 w 对预测的影响</h4>
+                    <p>拖动滑块观察无条件预测与条件预测的线性组合位置变化：</p>
+                    <input id="cfg-slider" type="range" min="0" max="3" step="0.1" value="1" style="width: 60%;">
+                    <span id="cfg-value">w = 1.0</span>
+                    <div class="demo-output show" id="cfg-demo">
+                        <canvas id="cfg-canvas" width="480" height="220"
+                            style="border:1px solid #ccc; border-radius:8px; background:white;"></canvas>
+                        <p style="margin-top:10px; color:#2d3436;">灰色：无条件预测 u(x|∅)；绿色：条件预测 u(x|y)；红色：组合 ũ(x|y)。当 w>1
+                            时，红点可能越过绿色点（过度引导）。</p>
+                    </div>
+                </div>
+
+                <h3>5.4 评测指标与可视化</h3>
+
+                <div class="concept-box">
+                    <h4>常用指标</h4>
+                    <ul>
+                        <li><strong>FID</strong> (Fréchet Inception Distance)<sup><a
+                                    href="#Heusel_2017_FID">Heusel_2017_FID</a></sup>：衡量生成图像与真实图像分布的距离。</li>
+                        <li><strong>KID</strong> (Kernel Inception Distance)：与FID类似但无偏估计。</li>
+                        <li><strong>CLIPScore</strong><sup><a
+                                    href="#Hessel_2021_CLIPScore">Hessel_2021_CLIPScore</a></sup>：文本-图像对齐度。</li>
+                        <li><strong>NFE</strong> (Number of Function Evaluations)：采样步数/网络评估次数。</li>
+                    </ul>
+                </div>
+
+                <table>
+                    <tr>
+                        <th>模型/设置</th>
+                        <th>步数 (NFE)</th>
+                        <th>FID↓</th>
+                        <th>KID↓</th>
+                        <th>CLIPScore↑</th>
+                    </tr>
+                    <tr>
+                        <td>U-Net + ODE(Heun)</td>
+                        <td>20</td>
+                        <td>—</td>
+                        <td>—</td>
+                        <td>—</td>
+                    </tr>
+                    <tr>
+                        <td>DiT + DPM-Solver</td>
+                        <td>15</td>
+                        <td>—</td>
+                        <td>—</td>
+                        <td>—</td>
+                    </tr>
+                </table>
+
+                <div class="researcher-note">
+                    <h4>批判与改进方向</h4>
+                    <ul>
+                        <li>应系统评估CFG对多样性-对齐度的Pareto曲线，而非单点w。</li>
+                        <li>报告同时包含质量（FID）与效率（NFE），并纳入稳定性统计（失败率）。</li>
+                        <li>建议加入鲁棒性测试：对抗扰动/压缩失真对生成质量的影响。</li>
+                    </ul>
+                </div>
+
+                <h3>5.5 结论与未来工作</h3>
+
+                <p>我们以统一的概率路径视角讲解了流匹配(flow matching)<sup><a
+                            href="#Lipman_2023_FlowMatching">Lipman_2023_FlowMatching</a></sup>与扩散模型(diffusion
+                    model)<sup><a
+                            href="#Ho_2020_DDPM">Ho_2020_DDPM</a></sup>，展示了条件生成、架构选型、采样器与评测。实践中推荐：以高斯概率路径为基线，采用噪声预测或向量场预测的单一网络，结合高阶ODE求解器与CFG<sup><a
+                            href="#Ho_2022_CFG">Ho_2022_CFG</a></sup>进行高效推理；在超少步数采样与稳定性方面，可参考EDM的设计建议<sup><a
+                            href="#Karras_2022_EDM">Karras_2022_EDM</a></sup>与一致性模型<sup><a
+                            href="#Song_2023_ConsistencyModels">Song_2023_ConsistencyModels</a></sup>。</p>
+
+                <div class="quiz-section">
+                    <div class="quiz-question">思考题7：为何减小采样步数时，向量场的Lipschitz性质尤为关键？</div>
+                    <button class="btn-reveal" onclick="toggleAnswer('answer5-1')">查看答案</button>
+                    <div id="answer5-1" class="quiz-answer">
+                        <p><strong>答案：</strong>较小步长下数值误差累积敏感，若向量场不够Lipschitz，局部线性近似失效导致发散或伪影；Lipschitz约束提高可积性与稳定性，允许更大步长而保持误差可控。
+                        </p>
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <h4>📌 第5章要点总结</h4>
+                    <ul>
+                        <li>CFG将条件与无条件预测线性组合，w>1可提升对齐但可能过度引导。</li>
+                        <li>U-Net适合高分辨率，DiT擅长全局语义与跨模态融合。</li>
+                        <li>高阶ODE求解器与DPM系采样器可在较低NFE下保持质量。</li>
+                        <li>评测需平衡质量、多样性、对齐度与效率，并报告稳定性。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <script src="src/common.js"></script>
+        <script src="src/c1.js"></script>
+        <script src="src/c2.js"></script>
+        <script src="src/c3.js"></script>
+        <script src="src/c4.js"></script>
+        <script src="src/c5.js"></script>
+    </div>
+
+    <!-- References Section -->
+    <div class="container">
+        <div class="content-area">
+            <details>
+                <summary style="cursor: pointer; font-weight: 600;">References（点击展开/折叠）</summary>
+                <ul style="font-size: 0.9em; line-height: 1.6; margin-left: 20px; margin-top: 15px;">
+                    <li id="Song_2021_ScoreSDE"><strong>Song_2021_ScoreSDE</strong>: Yang Song, Jascha Sohl-Dickstein,
+                        Diederik P. Kingma, Abhishek Kumar, Stefano Ermon, Ben Poole. 2021. Score-based generative
+                        modeling through stochastic differential equations. ICLR. <a
+                            href="https://arxiv.org/abs/2011.13456" target="_blank">arXiv:2011.13456</a></li>
+                    <li id="Ho_2020_DDPM"><strong>Ho_2020_DDPM</strong>: Jonathan Ho, Ajay Jain, Pieter Abbeel. 2020.
+                        Denoising diffusion probabilistic models. NeurIPS 33. <a href="https://arxiv.org/abs/2006.11239"
+                            target="_blank">arXiv:2006.11239</a></li>
+                    <li id="Song_2021_DDIM"><strong>Song_2021_DDIM</strong>: Jiaming Song, Chenlin Meng, Stefano Ermon.
+                        2021. Denoising diffusion implicit models. ICLR. <a href="https://arxiv.org/abs/2010.02502"
+                            target="_blank">arXiv:2010.02502</a></li>
+                    <li id="Dhariwal_2021_BeatsGANs"><strong>Dhariwal_2021_BeatsGANs</strong>: Prafulla Dhariwal, Alex
+                        Nichol. 2021. Diffusion models beat GANs on image synthesis. NeurIPS. <a
+                            href="https://arxiv.org/abs/2105.05233" target="_blank">arXiv:2105.05233</a></li>
+                    <li id="Karras_2022_EDM"><strong>Karras_2022_EDM</strong>: Tero Karras, Miika Aittala, Timo Aila,
+                        Samuli Laine, Erik Herva, Jaakko Lehtinen. 2022. Elucidating the design space of diffusion
+                        models. <a href="https://arxiv.org/abs/2206.00364" target="_blank">arXiv:2206.00364</a></li>
+                    <li id="Lu_2023_DPMSolver"><strong>Lu_2023_DPMSolver</strong>: Cheng Lu, et al. 2023. DPM-Solver: A
+                        fast ODE solver for diffusion models. <a href="https://arxiv.org/abs/2206.00927"
+                            target="_blank">arXiv:2206.00927</a></li>
+                    <li id="Lu_2022_DPMSolverPP"><strong>Lu_2022_DPMSolverPP</strong>: Cheng Lu, et al. 2022.
+                        DPM-Solver++: Fast ODE Solvers for Diffusion Models. <a href="https://arxiv.org/abs/2211.01095"
+                            target="_blank">arXiv:2211.01095</a></li>
+                    <li id="Liu_2022_RectifiedFlow"><strong>Liu_2022_RectifiedFlow</strong>: Xingchao Liu, Chengyue
+                        Gong, Qiang Liu. 2022. Flow straight and fast: Learning to generate and transfer data with
+                        rectified flow. <a href="https://arxiv.org/abs/2209.05442" target="_blank">arXiv</a></li>
+                    <li id="Song_2023_ConsistencyModels"><strong>Song_2023_ConsistencyModels</strong>: Yang Song,
+                        Prafulla Dhariwal, Chenlin Meng, Ilya Sutskever. 2023. Consistency models. <a
+                            href="https://arxiv.org/abs/2303.01469" target="_blank">arXiv:2303.01469</a></li>
+                    <li id="Rombach_2022_LDM"><strong>Rombach_2022_LDM</strong>: Robin Rombach, Andreas Blattmann,
+                        Dominik Lorenz, Patrick Esser, Björn Ommer. 2022. High-resolution image synthesis with latent
+                        diffusion models. CVPR. <a href="https://arxiv.org/abs/2112.10752"
+                            target="_blank">arXiv:2112.10752</a></li>
+                    <li id="Lipman_2023_FlowMatching"><strong>Lipman_2023_FlowMatching</strong>: Yaron Lipman, Ricky T.
+                        Q. Chen, Heli Ben-Hamu, Maximilian Nickel, Matt Le. 2023. Flow matching for generative modeling.
+                        ICLR. <a href="https://arxiv.org/abs/2210.02747" target="_blank">arXiv:2210.02747</a></li>
+                    <li id="Abramson_2024_AlphaFold3"><strong>Abramson_2024_AlphaFold3</strong>: Josh Abramson, et al.
+                        2024. Accurate structure prediction of biomolecular interactions with AlphaFold 3. Nature 630.
+                        <a href="https://doi.org/10.1038/s41586-024-07487-w" target="_blank">DOI</a></li>
+                    <li id="Peyre_2019_ComputationalOT"><strong>Peyre_2019_ComputationalOT</strong>: Gabriel Peyré,
+                        Marco Cuturi. 2019. Computational optimal transport. FnT ML 11(5-6). <a
+                            href="https://arxiv.org/abs/1803.00567" target="_blank">arXiv:1803.00567</a></li>
+                    <li id="Chen_2018_NeuralODE"><strong>Chen_2018_NeuralODE</strong>: Ricky T. Q. Chen, Yulia Rubanova,
+                        Jesse Bettencourt, David K. Duvenaud. 2018. Neural ODE. NeurIPS 31. <a
+                            href="https://arxiv.org/abs/1806.07366" target="_blank">arXiv:1806.07366</a></li>
+                    <li id="Grathwohl_2019_FFJORD"><strong>Grathwohl_2019_FFJORD</strong>: Will Grathwohl, Ricky T. Q.
+                        Chen, Jesse Bettencourt, Ilya Sutskever, David Duvenaud. 2019. FFJORD. ICLR. <a
+                            href="https://arxiv.org/abs/1810.01367" target="_blank">arXiv:1810.01367</a></li>
+                    <li id="Oksendal_2003_SDEBook"><strong>Oksendal_2003_SDEBook</strong>: Bernt Øksendal. 2003.
+                        Stochastic Differential Equations: An Introduction with Applications. Springer.</li>
+                    <li id="Uhlenbeck_1930_OU"><strong>Uhlenbeck_1930_OU</strong>: G. E. Uhlenbeck, L. S. Ornstein.
+                        1930. On the theory of the Brownian motion. Phys. Rev. 36(5):823–841.</li>
+                    <li id="Hyvarinen_2005_ScoreMatching"><strong>Hyvarinen_2005_ScoreMatching</strong>: Aapo Hyvärinen,
+                        Peter Dayan. 2005. Estimation of non-normalized statistical models by score matching. JMLR
+                        6:695–709. <a href="https://www.jmlr.org/papers/v6/hyvarinen05a.html" target="_blank">Link</a>
+                    </li>
+                    <li id="Ho_2022_CFG"><strong>Ho_2022_CFG</strong>: Jonathan Ho, Tim Salimans. 2022. Classifier-free
+                        diffusion guidance. NeurIPS 35. <a href="https://arxiv.org/abs/2207.12598"
+                            target="_blank">arXiv:2207.12598</a></li>
+                    <li id="Ronneberger_2015_UNet"><strong>Ronneberger_2015_UNet</strong>: Olaf Ronneberger, Philipp
+                        Fischer, Thomas Brox. 2015. U-Net. MICCAI. <a href="https://arxiv.org/abs/1505.04597"
+                            target="_blank">arXiv:1505.04597</a></li>
+                    <li id="Peebles_2023_DiT"><strong>Peebles_2023_DiT</strong>: William Peebles, Saining Xie. 2023.
+                        Scalable diffusion models with transformers. ICCV. <a href="https://arxiv.org/abs/2212.09748"
+                            target="_blank">arXiv:2212.09748</a></li>
+                    <li id="Heusel_2017_FID"><strong>Heusel_2017_FID</strong>: Martin Heusel, Hubert Ramsauer, Thomas
+                        Unterthiner, Bernhard Nessler, Sepp Hochreiter. 2017. TTUR & FID. NeurIPS 30. <a
+                            href="https://arxiv.org/abs/1706.08500" target="_blank">arXiv:1706.08500</a></li>
+                    <li id="Hessel_2021_CLIPScore"><strong>Hessel_2021_CLIPScore</strong>: Jack Hessel, Ari Holtzman,
+                        Maxwell Forbes, Ronan Le Bras, Yejin Choi. 2021. CLIPScore. EMNLP 2021. <a
+                            href="https://arxiv.org/abs/2104.08718" target="_blank">arXiv:2104.08718</a></li>
+                    <li id="Evans_2010_PDE"><strong>Evans_2010_PDE</strong>: Lawrence C. Evans. 2010. Partial
+                        Differential Equations. AMS.</li>
+                    <li id="Fokker_1914_FokkerPlanck"><strong>Fokker_1914_FokkerPlanck</strong>: Adriaan Fokker. 1914.
+                        Die mittlere Energie rotierender elektrischer Dipole im Strahlungsfeld. Ann. Phys.
+                        43(5):810–820.</li>
+                    <li id="StabilityAI_2024_SD3Medium"><strong>StabilityAI_2024_SD3Medium</strong>: Stability AI. 2024.
+                        Stable Diffusion 3 Medium. <a href="https://stability.ai/news/stable-diffusion-3-medium"
+                            target="_blank">Link</a></li>
+                    <li id="MetaAI_2024_MovieGen"><strong>MetaAI_2024_MovieGen</strong>: Meta AI. 2024. Movie Gen: A
+                        Cast of Media Foundation Models. <a href="https://ai.meta.com/research/movie-gen/"
+                            target="_blank">Link</a></li>
+                </ul>
+
+                <div
+                    style="margin-top: 20px; padding: 16px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                    <h4 style="color: var(--primary-color); margin-bottom: 10px;">📚 Primary Source</h4>
+                    <p style="margin: 0;">Peter Holderrieth and Ezra Erives. 2025. An Introduction to Flow Matching and
+                        Diffusion Models. arXiv:2506.02070. <a href="https://arxiv.org/abs/2506.02070"
+                            target="_blank">Link</a></p>
+                    <p style="margin: 10px 0 0 0; font-size: 0.9em; color: #666;">Course website: <a
+                            href="https://diffusion.csail.mit.edu/" target="_blank">https://diffusion.csail.mit.edu/</a>
+                    </p>
+                </div>
+            </details>
+        </div>
+    </div>
+</body>
+
+</html>
