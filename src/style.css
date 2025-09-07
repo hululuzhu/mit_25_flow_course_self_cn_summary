@@ -691,3 +691,34 @@ tr:hover {
         display: block !important;
     }
 }
+
+/* References compact when collapsed */
+.references-area details {
+    /* Remove unintended large min-heights if any */
+    min-height: 0;
+    padding: 0;
+}
+
+.references-area details > summary {
+    list-style: none;
+}
+
+.references-area details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.references-area details[open] {
+    /* Provide spacing only when expanded */
+    padding-top: 10px;
+}
+
+.references-area details:not([open]) ul,
+.references-area details:not([open]) div {
+    display: none;
+}
+
+/* References container should not reserve large height when collapsed */
+.references-area {
+    min-height: 0;
+    padding: 20px;
+}
